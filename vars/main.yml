@@ -1,0 +1,6 @@
+---
+hostname: {{ hostname }}
+ipaddr: {{ ipaddr }} 
+netmask: {{ netmask }}
+gateway: {{ gateway }}
+nameserver: {{ nameserver }}
