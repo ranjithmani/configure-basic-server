@@ -1,0 +1,60 @@
+---
+- name: Set the server hostname 
+  command: hostnamectl set-hostname {{ hostname }}
+
+- name: Disable unnecessary services 
+  service: 
+    name: "{{ item }}" 
+    state: stopped 
+    enabled: no
+  with_items:
+       - postfix
+       - firewalld
+       - auditd
+  ignore_errors: True
+
+- name: Disable SELINUX
+  replace: 
+     path: /etc/selinux/config 
+     regexp: '^SELINUX=enforcing' 
+     replace: 'SELINUX=disabled' 
+     backup: yes
+- name: Add host entries
+  blockinfile:
+     path: /etc/hosts
+     state: present
+     block: |
+       {{ ipaddr }}  {{ hostname }}
+       
+        
+- name: Configure Static Network
+  block:
+    - name: Disable DHCP
+      replace: 
+         path: /etc/sysconfig/network-scripts/ifcfg-eth0 
+         regexp: '^BOOTPROTO=dhcp' 
+         replace: 'BOOTPROTO=static'
+
+    - name: Add a Static IP address
+      blockinfile: 
+         path: /etc/sysconfig/network-scripts/ifcfg-eth0 
+         insertafter: 'USERCTL=no'  
+         state: present
+         block: |
+           IPADDR="{{ ipaddr }}"
+           NETMASK="{{ netmask }}"
+           GATEWAY="{{ gateway }}"
+
+    - name: Set the resolv.conf
+      copy: 
+       src: resolv.conf 
+       dest: /etc/resolv.conf 
+       mode: 0644
+
+- name: Add ssh Key to root
+  authorized_key:
+      user: root
+      key: 'ssh keys'
+
+- name: Reboot the server to take effect the changes.
+  command: /sbin/shutdown -r now 
